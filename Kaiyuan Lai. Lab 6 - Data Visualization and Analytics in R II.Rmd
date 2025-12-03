@@ -1,0 +1,236 @@
+```{r}
+library(ggplot2)
+library(tidyverse)
+
+df <- read_csv('Superstore.csv')
+df
+```
+
+```{r}
+colnames(df)
+```
+
+```{r}
+df1 <- df[df$`Order Quantity` > 100, ]
+df1
+
+ggplot(df1, aes(`Order Quantity`)) + geom_histogram(binwidth = 1) + facet_wrap(~`Ship Mode`, scales="free_y")
+
+
+```
+
+```{r}
+ggplot(df, aes(Category, `Unit Price`)) + geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+```{r}
+ggplot(df, aes(Category, Sales))  + stat_summary(fun="sum", geom="bar") + facet_wrap(~Region, scales="free_y") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+```{r}
+df$`Order Date` <- as.Date(df$`Order Date`, "%m/%d/%Y")
+df$year <- format(df$`Order Date`,"%Y")
+df$month <- format(df$`Order Date`,"%m")
+
+
+
+ggplot(df, aes(month, Sales)) + geom_boxplot() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ylim(0, 5000)
+```
+```{r}
+ggplot(df, aes(Profit)) + geom_density(kernel = 'gaussian')  + facet_wrap(~Category, scales="free_y") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+```{r}
+df$`Sales Value` <- df$`Order Quantity` * df$`Unit Price`
+
+ggplot(df, aes(State, `Sales Value`))  + stat_summary(fun="max", geom="bar") +  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+```{r}
+df2 <- df[df$State == "Arizona", ]
+df2
+
+sum(df2$Sales) / nrow(df2)
+
+ggplot(df, aes(State, `Sales`))  + stat_summary(fun="mean", geom="bar") +
+stat_summary(fun = "mean", geom = "text", aes(label = round(..y.., 2)), vjust = -0.5) +  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlim("Arizona")
+```
+```{r}
+library(dplyr)
+```
+
+```{r}
+df3 <-  summarise_all(group_by(df, `Order Date`), vars(Sales), funs(mean(.,na.rm=TRUE)))
+
+arrange(df3, desc(Sales))
+```
+
+```{r}
+ggplot(df, aes(`Order Date`, Sales)) + geom_line() + stat_summary(fun="mean", geom="line")  +  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+df$`Shipping Cost Ratio` <- df$`Shipping Cost` / df$Sales
+
+ggplot(df, aes(`Item ID`, `Shipping Cost Ratio`)) + geom_line() + stat_summary(fun="max", geom="line")  +  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+arrange(df, desc(`Shipping Cost Ratio`))
+```
+```{r}
+avg_cost <- df %>%
+  group_by(`Item ID`, `Ship Mode`) %>%
+  summarise(avg_shipping_cost = mean(`Shipping Cost`, na.rm = TRUE)) %>%
+  ungroup()
+
+delivery_truck_cost <- avg_cost %>%
+  filter(`Ship Mode` == "Delivery Truck")
+
+
+arrange(delivery_truck_cost, desc(`avg_shipping_cost`))
+```
+```{r}
+
+```
+
+```{r}
+dfpaper <- df %>% filter(Category == "Paper") %>% group_by(`Order Date`) %>% summarise_at(vars(Sales), funs(sum(.,na.rm=TRUE))) %>% mutate(`Order Date` = as.Date(`Order Date`, format = "%m/%d/%Y")) 
+
+dfpaper
+
+ggplot(dfpaper, aes(`Order Date`, Sales)) + geom_line() + xlim(as.Date('2015-11-30'), as.Date('2015-12-05')) + ylim(0, 2000)
+```
+```{r}
+df3category <- filter(df, Category == "Binders and Binder Accessories" | Category == "Telephones and Communication" | Category == "Computer Peripherals") %>% group_by(Category, `Order Date`) %>%  summarise_at(vars(Sales), funs(sum(.,na.rm=TRUE)))
+
+df3category
+
+ggplot(df3category, aes(x=`Order Date`, y=Sales, col=Category)) + geom_line() + xlim(as.Date('2015-08-15'), as.Date('2015-08-21')) + ylim(0, 5000)
+```
+```{R}
+summarise_at(group_by(df, Category), vars(Sales), funs(mean(.,na.rm=TRUE)))
+```
+
+```{R}
+
+df %>% mutate(`Order Date` = as.Date(`Order Date`, format = "%m/%d/%Y")) %>% mutate(`Ship Date` = as.Date(`Ship Date`, format = "%m/%d/%Y")) %>% mutate(`Lead Time` = difftime(`Order Date`, `Ship Date`)) %>% group_by(Item) %>% summarise_at(vars(`Lead Time`), funs(mean(.,na.rm=TRUE))) %>% arrange(`Lead Time`)
+```
+
+```{r}
+df$Year <- as.numeric(format(df$`Order Date`,'%Y'))
+
+df9 <- df[df$Year == "2015", ]
+
+df10 <- df9 %>%
+  group_by(State) %>%
+  summarise(across(`Sales`, ~ sum(.x, na.rm = TRUE)))
+
+df10[30,2]
+
+df9
+df10
+```
+
+```{r}
+df11 <- df[df$Year == "2016", ]
+
+df12 <- df11 %>%
+  group_by(State) %>%
+  summarise(across(`Sales`, ~ sum(.x, na.rm = TRUE)))
+
+df12[35,2]
+
+df12
+```
+```{r}
+dfstate <- inner_join(df10, df12, by = 'State')
+colnames(dfstate) <- c('State', '2015', '2016')
+
+dfstate
+
+dfstate1 <- gather(dfstate, '2015','2016', key = 'year', value = "sales")
+
+dfstate1
+dfstate1[35,3]
+```
+```{r}
+library(lubridate)
+library(stringr)
+# install.packages('nycflights13')
+
+library(nycflights13)
+airlines
+
+flights
+
+planes
+
+inner_join(flights, airlines, by = 'carrier') %>% filter(name == 'JetBlue Airways')
+
+
+inner_join(flights, airlines, by = 'carrier') %>% inner_join(planes, by = 'tailnum') %>% filter(name == 'JetBlue Airways' & manufacturer == 'EMBRAER')
+```
+```{r}
+dfstate1$key <- "sales"
+
+names(dfstate1)[3] <- 'values'
+
+dfstate2 <- spread(dfstate1, key = key, value = values)
+
+dfstate2
+
+dfstate2[38,3]
+```
+```{r}
+dfquantity1 <- filter(df, Year == 2015) %>% group_by(State) %>%  summarise_at(vars(`Order Quantity`), funs(sum(.,na.rm=TRUE)))
+
+dfquantity2 <- filter(df, Year == 2016) %>% group_by(State) %>%  summarise_at(vars(`Order Quantity`), funs(sum(.,na.rm=TRUE)))
+
+dfstate3 <- inner_join(dfquantity1, dfquantity2, by = 'State')
+colnames(dfstate3) <- c('State', '2015', '2016')
+
+dfstate3
+
+dfstate4 <- gather(dfstate3, '2015','2016', key = 'year', value = "values")
+
+dfstate4$key <- "order.quantity"
+
+dfstate4
+dfstate4[90,3]
+```
+```{r}
+
+
+
+
+
+```
+```{r}
+dfdate_sales <- df %>% group_by(`Order Date`) %>%  summarise_at(vars(Sales), funs(sum(.,na.rm=TRUE))) %>%  mutate(`Order Date` = as.Date(`Order Date`, format = "%m/%d/%Y")) %>% complete(`Order Date` = seq.Date(min(`Order Date`), max(`Order Date`), by="day"))
+dfdate_sales[1000,2]
+dfdate_sales
+```
+
+```{r}
+dffill <- fill(dfdate_sales, Sales, .direction = 'up')
+dffill
+dffill[890,2]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
